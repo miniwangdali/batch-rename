@@ -1,5 +1,8 @@
 This project is a application to batch rename files.
 
+## Downloads:
+- [Windows10 64bit](https://github.com/miniwangdali/batch-rename/releases/download/v0.1.0-beta/batch-rename_0.1.0_x64.msi)
+
 ## Available Scripts
 
 In the project directory, you can run:
