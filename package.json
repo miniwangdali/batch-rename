@@ -33,6 +33,7 @@
     "start": "react-app-rewired start",
     "build": "react-app-rewired build",
     "release": "standard-version --release-as minor",
+    "release:patch": "standard-version",
     "release:pre": "standard-version --prerelease --release-as minor",
     "test": "react-app-rewired test",
     "tauri": "tauri",
