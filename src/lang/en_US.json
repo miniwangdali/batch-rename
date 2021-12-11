@@ -1,0 +1,20 @@
+{
+  "App.title": "Batch Rename",
+  "components.FileList.FileList.dropToAddFiles": "Drop to add files",
+  "components.FileList.FileList.filename": "Filename",
+  "components.FileList.FileList.newFilename": "New filename",
+  "components.OptionsList.OptionsList.fillUpDigit": "Fill up numbers",
+  "components.OptionsList.OptionsList.newFilename": "New filename",
+  "components.OptionsList.OptionsList.newFilenameHelperText": "* - original filename, # - numbers",
+  "components.OptionsList.OptionsList.onlyDotErrorMessage": "Filename cannot only have '.'",
+  "components.OptionsList.OptionsList.overwriteExtension": "Overwrite extension name",
+  "components.OptionsList.OptionsList.patternErrorMessage": "Filename cannot contain the following:\\ / : ?\" < > |",
+  "components.OptionsList.OptionsList.sampleFilename": "New filename sample: {sample}",
+  "pages.FilePage.FilePage.addFiles": "Add files",
+  "pages.FilePage.FilePage.fileCount": "{count} files",
+  "pages.FilePage.FilePage.fileList": "File list",
+  "pages.FilePage.FilePage.renameFile": "Rename",
+  "pages.OptionsPage.OptionsPage.options": "Options",
+  "pages.SettingsPage.SettingsPage.language": "Language",
+  "pages.SettingsPage.SettingsPage.settings": "Settings"
+}

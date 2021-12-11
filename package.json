@@ -1,8 +1,15 @@
 {
   "name": "batch-rename",
+  "author": {
+    "name": "Xiaoyan Wang",
+    "email": "miniwangdali@gmail.com",
+    "url": "https://github.com/miniwangdali"
+  },
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "dependencies": {
+    "@tauri-apps/api": "^1.0.0-beta.8",
     "@testing-library/jest-dom": "^5.11.4",
     "@testing-library/react": "^11.1.0",
     "@testing-library/user-event": "^12.1.10",
@@ -10,17 +17,29 @@
     "@types/node": "^12.0.0",
     "@types/react": "^17.0.0",
     "@types/react-dom": "^17.0.0",
+    "classnames": "^2.3.1",
+    "lodash": "^4.17.21",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
+    "react-hook-form": "^7.21.0",
+    "react-intl": "^5.23.0",
     "react-scripts": "4.0.3",
+    "react-use": "^17.3.1",
+    "recoil": "^0.5.2",
     "typescript": "^4.1.2",
     "web-vitals": "^1.0.1"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "start": "react-app-rewired start",
+    "build": "react-app-rewired build",
+    "test": "react-app-rewired test",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:build:dev": "tauri build --debug",
+    "translations:extract-compile": "npm run translations:extract:internal -- \"src/**/*.ts*\" --out-file \"src/lang/temp.json\" --id-interpolation-pattern '[sha512:contenthash:base64:6]' --ignore \"src/react-app-env.d.ts\" && npm run translations:compile:internal -- \"src/lang/temp.json\" --out-file \"src/lang/zh_CN.json\" && rm \"src/lang/temp.json\"",
+    "translations:extract:internal": "formatjs extract",
+    "translations:compile:internal": "formatjs compile"
   },
   "eslintConfig": {
     "extends": [
@@ -39,5 +58,22 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@emotion/react": "^11.7.0",
+    "@emotion/styled": "^11.6.0",
+    "@fontsource/roboto": "^4.5.1",
+    "@formatjs/cli": "^4.5.0",
+    "@mui/icons-material": "^5.2.0",
+    "@mui/material": "^5.2.2",
+    "@tauri-apps/cli": "^1.0.0-beta.10",
+    "@types/lodash": "^4.14.177",
+    "babel-plugin-lodash": "^3.3.4",
+    "customize-cra": "^1.0.0",
+    "lodash-webpack-plugin": "^0.11.6",
+    "react-app-rewired": "^2.1.8",
+    "sass": "^1.44.0",
+    "sass-loader": "^12.3.0",
+    "sass-resources-loader": "^2.2.4"
   }
 }

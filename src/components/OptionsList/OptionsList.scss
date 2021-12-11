@@ -1,0 +1,9 @@
+.OptionsList {
+  flex: 1;
+  padding: $dimension-05 0 $dimension-05 $dimension-05;
+  width: 100%;
+  position: relative;
+  &__sample-filename {
+    overflow: auto;
+  }
+}

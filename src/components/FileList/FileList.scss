@@ -1,0 +1,45 @@
+.FileList {
+  flex: 1;
+  padding: 0 $dimension-05;
+  width: 100%;
+  position: relative;
+  overflow: auto;
+  &__drop-message {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: $dimension-05;
+    right: $dimension-05;
+    visibility: hidden;
+    opacity: 0;
+    border: dashed $dimension-02;
+    border-radius: $dimension-02;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity $duration--fast-02 $standard-easing;
+  }
+  &--dragging-over {
+    .FileList__drop-message {
+      background-color: rgba($black, 0.5);
+      visibility: visible;
+      opacity: 1;
+      z-index: 10;
+    }
+  }
+  &__list-container {
+    height: 100%;
+    overflow: auto;
+    padding-bottom: $dimension-11;
+  }
+  &__list {
+    &-item {
+      width: 100%;
+      &-text {
+        width: calc((100% - 56px - 56px) / 2);
+        white-space: nowrap;
+        overflow: auto;
+      }
+    }
+  }
+}

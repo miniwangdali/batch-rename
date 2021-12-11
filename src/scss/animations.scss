@@ -1,0 +1,10 @@
+$standard-easing: cubic-bezier(0.2, 0, 0.38, 0.9);
+$entrance-easing: cubic-bezier(0, 0, 0.38, 0.9);
+$exit-easing: cubic-bezier(0.2, 0, 1, 0.9);
+
+$duration--fast-01: 70ms;
+$duration--fast-02: 110ms;
+$duration--moderate-01: 150ms;
+$duration--moderate-02: 240ms;
+$duration--slow-01: 400ms;
+$duration--slow-02: 700ms;

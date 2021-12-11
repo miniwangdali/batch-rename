@@ -1,0 +1,20 @@
+{
+  "App.title": "批量文件改名",
+  "components.FileList.FileList.dropToAddFiles": "添加文件",
+  "components.FileList.FileList.filename": "文件名",
+  "components.FileList.FileList.newFilename": "新文件名",
+  "components.OptionsList.OptionsList.fillUpDigit": "补齐位数",
+  "components.OptionsList.OptionsList.newFilename": "新文件名",
+  "components.OptionsList.OptionsList.newFilenameHelperText": "* - 原文件名, # - 文件序号",
+  "components.OptionsList.OptionsList.onlyDotErrorMessage": "文件名不能只包含“.”",
+  "components.OptionsList.OptionsList.overwriteExtension": "修改扩展名",
+  "components.OptionsList.OptionsList.patternErrorMessage": "文件名不能包含以下字符:\\ / : ?\" < > |",
+  "components.OptionsList.OptionsList.sampleFilename": "新文件名示例：{sample}",
+  "pages.FilePage.FilePage.addFiles": "添加文件",
+  "pages.FilePage.FilePage.fileCount": "{count}个文件",
+  "pages.FilePage.FilePage.fileList": "文件列表",
+  "pages.FilePage.FilePage.renameFile": "一键改名",
+  "pages.OptionsPage.OptionsPage.options": "选项",
+  "pages.SettingsPage.SettingsPage.language": "语言",
+  "pages.SettingsPage.SettingsPage.settings": "设置"
+}
