@@ -7,7 +7,7 @@ export const generateNewFilename = async (
   options?: {
     fillUp?: boolean;
     overwriteExtension?: boolean;
-    totalLength?: number;
+    fillUpLength?: number;
   }
 ) => {
   if (!pattern) return filename;
@@ -17,13 +17,7 @@ export const generateNewFilename = async (
     filenameWithoutExtension = filenameWithoutExtension.slice(0, -1);
   const newFilename = pattern
     .replaceAll(/\*/g, filenameWithoutExtension)
-    .replaceAll(
-      "#",
-      `${index}`.padStart(
-        options?.fillUp ? Math.floor((options.totalLength ?? 1) / 10 + 1) : 0,
-        "0"
-      )
-    );
+    .replaceAll("#", `${index}`.padStart(options?.fillUpLength ?? 0, "0"));
   if (options?.overwriteExtension) return newFilename;
   return `${newFilename}.${ext}`;
 };

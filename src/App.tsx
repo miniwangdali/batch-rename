@@ -45,7 +45,7 @@ const App = () => {
   useEffect(() => {
     const currentWindow = getCurrent();
     currentWindow.setTitle(intl.formatMessage(messages.title));
-  }, [lang]);
+  }, [intl, lang]);
 
   return (
     <div className="App">

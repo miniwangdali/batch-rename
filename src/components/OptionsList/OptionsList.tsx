@@ -1,12 +1,13 @@
 import _ from "lodash";
 import {
+  Box,
   FormControlLabel,
   FormGroup,
   Switch,
   TextField,
   Typography
 } from "@mui/material";
-import React, { useEffect, useState } from "react";
+import React, { ChangeEventHandler, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { generateNewFilename } from "../../utils/filename";
 import { useControlledSwitch } from "../../hooks/ControlledSwitchHook";
@@ -33,9 +34,14 @@ export const OptionsList = () => {
   const [newFilenamePattern, setNewFilenamePattern] = useState("");
   const [sampleFilename, setSampleFilename] = useState(sample);
   const [fillUp, onFillUpChange] = useControlledSwitch(false);
+  const [fillUpLength, setFillUpLength] = useState(files.length);
   const [overwriteExtension, onOverwriteExtensionChange] =
     useControlledSwitch(false);
   const { newFilename } = watch();
+
+  useEffect(() => {
+    setFillUpLength(Math.floor(files.length / 10 + 1));
+  }, [files.length]);
 
   useEffect(() => {
     if (typeof newFilename === "string") {
@@ -47,12 +53,13 @@ export const OptionsList = () => {
   }, [newFilename]);
 
   useEffect(() => {
+    console.log(fillUpLength);
     const updateSampleFilename = async () => {
       setSampleFilename(
         await generateNewFilename(newFilenamePattern, sample, 1, {
           fillUp,
           overwriteExtension: overwriteExtension,
-          totalLength: files.length
+          fillUpLength
         })
       );
     };
@@ -68,7 +75,7 @@ export const OptionsList = () => {
               newFilenamePattern,
               file.filename,
               i,
-              { fillUp, overwriteExtension, totalLength: files.length }
+              { fillUp, overwriteExtension, fillUpLength }
             )
           });
         }
@@ -77,7 +84,12 @@ export const OptionsList = () => {
       onFilePatternChange();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [newFilenamePattern, fillUp, overwriteExtension, files.length, errors]);
+  }, [newFilenamePattern, fillUp, fillUpLength, overwriteExtension, errors]);
+
+  const onFillUpLengthChange: ChangeEventHandler<HTMLInputElement> = (evt) => {
+    const length = parseInt(evt.target.value);
+    setFillUpLength(Number.isNaN(length) ? 0 : length);
+  };
 
   return (
     <div className="OptionsList">
@@ -120,11 +132,25 @@ export const OptionsList = () => {
           }
         })}
       />
-      <FormGroup row>
-        <FormControlLabel
-          control={<Switch checked={fillUp} onChange={onFillUpChange} />}
-          label={intl.formatMessage(messages.fillUpDigit)}
-        />
+      <FormGroup>
+        <Box sx={{ display: "flex" }}>
+          <FormControlLabel
+            control={<Switch checked={fillUp} onChange={onFillUpChange} />}
+            label={intl.formatMessage(messages.fillUpDigit)}
+          />
+          <TextField
+            id="OptionsList__fill-up-length-input"
+            disabled={!fillUp}
+            value={fillUpLength}
+            onChange={onFillUpLengthChange}
+            size="small"
+            variant="outlined"
+            type="number"
+            sx={{ width: "50%" }}
+            inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+          />
+        </Box>
+
         <FormControlLabel
           control={
             <Switch
