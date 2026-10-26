@@ -1,0 +1,104 @@
+# Builds the portable Windows executable and publishes a GitHub release when a version tag
+# (for example v0.4.0) is pushed. Tags with a suffix (v0.4.0-beta.1) become pre-releases.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check that the tag matches the app version
+        id: version
+        shell: pwsh
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $cargo = (Select-String -Path src-tauri/Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          if ($env:TAG -ne "v$version") {
+            Write-Error "Tag $env:TAG doesn't match the version in package.json ($version)."
+            exit 1
+          }
+          if ($cargo -ne $version) {
+            Write-Error "src-tauri/Cargo.toml has version $cargo, package.json has $version."
+            exit 1
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "prerelease=$(([string]$version.Contains('-')).ToLower())" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Also builds the context menu DLL and package (src-tauri/build.rs), which needs
+      # makeappx.exe from the Windows SDK that the runner provides.
+      - name: Build
+        run: npm run tauri build
+
+      - name: Prepare release files
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          REPOSITORY: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          New-Item -ItemType Directory release | Out-Null
+          Copy-Item src-tauri/target/release/batch-rename.exe release/
+          $hash = (Get-FileHash release/batch-rename.exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  batch-rename.exe" | Set-Content release/SHA256SUMS.txt -Encoding ascii
+
+          # Release notes: this version's section of CHANGELOG.md.
+          $lines = @(Get-Content CHANGELOG.md -Encoding utf8)
+          $heading = '^## \[?' + [regex]::Escape($env:VERSION) + '\]?(\s|\(|$)'
+          $start = [array]::FindIndex($lines, [Predicate[string]] { param($l) $l -match $heading })
+          $notes = @()
+          if ($start -ge 0) {
+            for ($i = $start + 1; $i -lt $lines.Count -and $lines[$i] -notmatch '^## '; $i++) { $notes += $lines[$i] }
+          }
+          $body = ($notes -join "`n").Trim()
+          if (-not $body) {
+            $body = "See [CHANGELOG.md](https://github.com/$env:REPOSITORY/blob/$env:TAG/CHANGELOG.md)."
+          }
+          $body += @"
+
+
+          ## Download
+
+          Download **batch-rename.exe** below and run it. There's no installer; keep it wherever you like.
+
+          - Windows may say "Windows protected your PC" because the app isn't code-signed. Choose **More info**, then **Run anyway**.
+          - The app needs the Microsoft Edge WebView2 Runtime, which is part of Windows 11 and up-to-date Windows 10.
+          "@
+          $body | Set-Content release/notes.md -Encoding utf8
+
+      - uses: softprops/action-gh-release@v3
+        with:
+          name: Batch Rename ${{ steps.version.outputs.version }}
+          body_path: release/notes.md
+          prerelease: ${{ steps.version.outputs.prerelease }}
+          fail_on_unmatched_files: true
+          files: |
+            release/batch-rename.exe
+            release/SHA256SUMS.txt

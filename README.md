@@ -23,6 +23,18 @@ cross-platform. Built with [Tauri 2](https://v2.tauri.app/), React and
 
 Keyboard: <kbd>Ctrl</kbd>+<kbd>Enter</kbd> renames.
 
+## Download
+
+Get **batch-rename.exe** from the [latest release](https://github.com/miniwangdali/batch-rename/releases/latest)
+and run it. There's no installer: keep the file wherever you like, ideally in its final place
+before turning on the Start menu or context menu settings below.
+
+- Windows may say "Windows protected your PC" because the app isn't code-signed. Choose
+  **More info**, then **Run anyway**.
+- The app needs the Microsoft Edge WebView2 Runtime, which is part of Windows 11 and up-to-date
+  Windows 10.
+- To update, replace the file with the new version.
+
 ## Windows integration
 
 Everything is off by default and can be turned on in **Settings**:
@@ -40,9 +52,6 @@ start it. To remove the app, turn both settings off, then delete the executable.
 in `%LOCALAPPDATA%\io.github.miniwangdali.batch-rename`. On Windows 11 the (now useless)
 certificate stays in the computer's *Trusted People* store; you can remove
 *Batch Rename Context Menu* there with `certlm.msc` if you like.
-
-The app needs the Microsoft Edge WebView2 Runtime, which is part of Windows 11 and up-to-date
-Windows 10.
 
 ## Replace patterns
 
@@ -100,6 +109,22 @@ Project layout:
   top-level: package signing, certificate trust, registration).
 - `src-tauri/context-menu/` – the Windows 11 context menu handler (a small COM DLL) and its package
   manifest. `src-tauri/build.rs` builds both and embeds them in the executable.
+
+### Releasing
+
+1. Set the new version in `package.json` and `src-tauri/Cargo.toml`, and give it a section in
+   `CHANGELOG.md`, e.g. `## 0.4.0 (2026-11-01)`.
+2. Commit, then tag and push:
+
+   ```sh
+   git tag v0.4.0
+   git push origin master v0.4.0
+   ```
+
+The [release workflow](.github/workflows/release.yml) checks that the tag matches the version,
+builds `batch-rename.exe` on Windows and publishes a GitHub release with the executable, its
+SHA-256 checksum and the version's changelog section as release notes. Tags with a suffix such as
+`v0.4.0-beta.1` are published as pre-releases.
 
 ## License
 
