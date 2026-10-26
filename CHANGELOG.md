@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## 0.3.0 (unreleased)
+## [0.3.0](https://github.com/miniwangdali/batch-rename/compare/v0.2.0...v0.3.0) (2026-10-25)
 
 Rewritten from scratch as a small PowerToys PowerRename–style renamer.
 
