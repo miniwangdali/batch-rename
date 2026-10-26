@@ -74,7 +74,11 @@ enum Segment {
   Prefix,
   Suffix,
   Date(DateToken, &'static str),
-  Counter { start: i64, increment: i64, padding: usize },
+  Counter {
+    start: i64,
+    increment: i64,
+    padding: usize,
+  },
   Random(Charset, usize),
   Uuid,
 }
@@ -95,7 +99,9 @@ impl Default for DateNames {
   fn default() -> Self {
     let v = |s: &str| s.split(',').map(str::to_string).collect::<Vec<_>>();
     DateNames {
-      months: v("January,February,March,April,May,June,July,August,September,October,November,December"),
+      months: v(
+        "January,February,March,April,May,June,July,August,September,October,November,December",
+      ),
       months_short: v("Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec"),
       days: v("Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday"),
       days_short: v("Sun,Mon,Tue,Wed,Thu,Fri,Sat"),
@@ -162,7 +168,14 @@ impl Template {
   }
 
   pub fn render(&self, ctx: &RenderContext, out: &mut String) {
-    let span_text = |i: usize| ctx.spans.get(i).copied().flatten().map(|(s, e)| &ctx.text[s..e]);
+    let span_text = |i: usize| {
+      ctx
+        .spans
+        .get(i)
+        .copied()
+        .flatten()
+        .map(|(s, e)| &ctx.text[s..e])
+    };
     for seg in &self.segments {
       match seg {
         Segment::Lit(s) => out.push_str(s),
@@ -184,7 +197,11 @@ impl Template {
             out.push_str(raw);
           }
         },
-        Segment::Counter { start, increment, padding } => {
+        Segment::Counter {
+          start,
+          increment,
+          padding,
+        } => {
           let value = start.saturating_add(increment.saturating_mul(ctx.index));
           out.push_str(&format!("{value:0padding$}"));
         }
@@ -268,7 +285,11 @@ fn parse_braced(inner: &str, opts: &ParseOptions) -> Option<Segment> {
     return None;
   }
   let (mut start, mut increment, mut padding) = (0i64, 1i64, 0usize);
-  for part in inner.split([',', ';']).map(str::trim).filter(|p| !p.is_empty()) {
+  for part in inner
+    .split([',', ';'])
+    .map(str::trim)
+    .filter(|p| !p.is_empty())
+  {
     let (key, value) = part.split_once('=')?;
     match key.trim() {
       "start" => start = value.trim().parse().ok()?,
@@ -277,7 +298,11 @@ fn parse_braced(inner: &str, opts: &ParseOptions) -> Option<Segment> {
       _ => return None,
     }
   }
-  Some(Segment::Counter { start, increment, padding })
+  Some(Segment::Counter {
+    start,
+    increment,
+    padding,
+  })
 }
 
 fn format_date(token: DateToken, t: &DateTime<Local>, names: &DateNames) -> String {
@@ -314,7 +339,14 @@ fn uuid_v4() -> String {
   b[6] = (b[6] & 0x0f) | 0x40;
   b[8] = (b[8] & 0x3f) | 0x80;
   let h: String = b.iter().map(|x| format!("{x:02x}")).collect();
-  format!("{}-{}-{}-{}-{}", &h[0..8], &h[8..12], &h[12..16], &h[16..20], &h[20..32])
+  format!(
+    "{}-{}-{}-{}-{}",
+    &h[0..8],
+    &h[8..12],
+    &h[12..16],
+    &h[16..20],
+    &h[20..32]
+  )
 }
 
 #[cfg(test)]
@@ -329,19 +361,42 @@ mod tests {
   }
 
   fn plain(enumerate: bool, random: bool) -> ParseOptions<'static> {
-    ParseOptions { groups: None, enumerate, random }
+    ParseOptions {
+      groups: None,
+      enumerate,
+      random,
+    }
   }
 
-  fn ctx<'a>(index: i64, time: Option<&'a DateTime<Local>>, names: &'a DateNames) -> RenderContext<'a> {
-    RenderContext { text: "", spans: &[], index, time, names }
+  fn ctx<'a>(
+    index: i64,
+    time: Option<&'a DateTime<Local>>,
+    names: &'a DateNames,
+  ) -> RenderContext<'a> {
+    RenderContext {
+      text: "",
+      spans: &[],
+      index,
+      time,
+      names,
+    }
   }
 
   #[test]
   fn literal_and_escapes() {
     let names = DateNames::default();
-    assert_eq!(render("a$$b", &plain(true, true), &ctx(0, None, &names)), "a$b");
-    assert_eq!(render("cost $5", &plain(true, true), &ctx(0, None, &names)), "cost $5");
-    assert_eq!(render("end$", &plain(true, true), &ctx(0, None, &names)), "end$");
+    assert_eq!(
+      render("a$$b", &plain(true, true), &ctx(0, None, &names)),
+      "a$b"
+    );
+    assert_eq!(
+      render("cost $5", &plain(true, true), &ctx(0, None, &names)),
+      "cost $5"
+    );
+    assert_eq!(
+      render("end$", &plain(true, true), &ctx(0, None, &names)),
+      "end$"
+    );
   }
 
   #[test]
@@ -350,10 +405,26 @@ mod tests {
     let o = plain(true, false);
     assert_eq!(render("${}", &o, &ctx(0, None, &names)), "0");
     assert_eq!(render("${}", &o, &ctx(3, None, &names)), "3");
-    assert_eq!(render("Image_${padding=4;increment=2;start=10}_", &o, &ctx(2, None, &names)), "Image_0014_");
-    assert_eq!(render("${start=1, padding=3}", &o, &ctx(0, None, &names)), "001");
-    assert_eq!(render("${bogus=1}", &o, &ctx(0, None, &names)), "${bogus=1}");
-    assert_eq!(render("${}", &plain(false, false), &ctx(0, None, &names)), "${}");
+    assert_eq!(
+      render(
+        "Image_${padding=4;increment=2;start=10}_",
+        &o,
+        &ctx(2, None, &names)
+      ),
+      "Image_0014_"
+    );
+    assert_eq!(
+      render("${start=1, padding=3}", &o, &ctx(0, None, &names)),
+      "001"
+    );
+    assert_eq!(
+      render("${bogus=1}", &o, &ctx(0, None, &names)),
+      "${bogus=1}"
+    );
+    assert_eq!(
+      render("${}", &plain(false, false), &ctx(0, None, &names)),
+      "${}"
+    );
   }
 
   #[test]
@@ -369,18 +440,31 @@ mod tests {
     assert_eq!(u.len(), 38);
     assert_eq!(&u[15..16], "4");
     assert!(matches!(&u[20..21], "8" | "9" | "a" | "b"));
-    assert_eq!(render("${ruuidv4}", &plain(false, false), &ctx(0, None, &names)), "${ruuidv4}");
+    assert_eq!(
+      render("${ruuidv4}", &plain(false, false), &ctx(0, None, &names)),
+      "${ruuidv4}"
+    );
   }
 
   #[test]
   fn dates() {
     let names = DateNames::default();
-    let t = Local.with_ymd_and_hms(2020, 11, 2, 7, 5, 9).unwrap() + chrono::Duration::milliseconds(42);
+    let t =
+      Local.with_ymd_and_hms(2020, 11, 2, 7, 5, 9).unwrap() + chrono::Duration::milliseconds(42);
     let o = plain(true, false);
     let c = ctx(0, Some(&t), &names);
-    assert_eq!(render("$MMM-$DD-$YY-powertoys", &o, &c), "Nov-02-20-powertoys");
-    assert_eq!(render("$YYYY$MM$DD_$hh$mm$ss.$fff", &o, &c), "20201102_070509.042");
-    assert_eq!(render("$Y $M $D $h $m $s $ff $f", &o, &c), "0 11 2 7 5 9 04 0");
+    assert_eq!(
+      render("$MMM-$DD-$YY-powertoys", &o, &c),
+      "Nov-02-20-powertoys"
+    );
+    assert_eq!(
+      render("$YYYY$MM$DD_$hh$mm$ss.$fff", &o, &c),
+      "20201102_070509.042"
+    );
+    assert_eq!(
+      render("$Y $M $D $h $m $s $ff $f", &o, &c),
+      "0 11 2 7 5 9 04 0"
+    );
     assert_eq!(render("$MMMM $DDDD $DDD", &o, &c), "November Monday Mon");
     assert_eq!(render("$YYYY", &o, &ctx(0, None, &names)), "$YYYY");
   }
@@ -389,10 +473,20 @@ mod tests {
   fn regex_references() {
     let names = DateNames::default();
     let group_names = vec![None, None, Some("ext".to_string())];
-    let o = ParseOptions { groups: Some((2, &group_names)), enumerate: true, random: false };
+    let o = ParseOptions {
+      groups: Some((2, &group_names)),
+      enumerate: true,
+      random: false,
+    };
     let text = "abc.txt";
     let spans = [Some((0, 7)), Some((0, 3)), Some((4, 7))];
-    let c = RenderContext { text, spans: &spans, index: 0, time: None, names: &names };
+    let c = RenderContext {
+      text,
+      spans: &spans,
+      index: 0,
+      time: None,
+      names: &names,
+    };
     assert_eq!(render("$2-$1", &o, &c), "txt-abc");
     assert_eq!(render("[$&]", &o, &c), "[abc.txt]");
     assert_eq!(render("$<ext>", &o, &c), "txt");

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Button,
   Dialog,
@@ -10,11 +10,12 @@ import {
   DialogTrigger,
   Field,
   Select,
+  Spinner,
   Switch,
   Text,
 } from "@fluentui/react-components";
 import { version } from "../../package.json";
-import { api } from "../api";
+import { api, CANCELLED, type IntegrationStatus } from "../api";
 import { useI18n } from "../i18n";
 import type { Language, Settings, Theme } from "../settings";
 
@@ -25,27 +26,59 @@ interface Props {
   onChange: (settings: Settings) => void;
 }
 
+interface Message {
+  intent: "error" | "warning";
+  text: string;
+}
+
 export function SettingsDialog({ open, onOpenChange, settings, onChange }: Props) {
   const { t } = useI18n();
-  // `null` means Explorer integration isn't available on this platform.
-  const [shell, setShell] = useState<boolean | null>(null);
-  const [shellError, setShellError] = useState<string | null>(null);
+  const [integration, setIntegration] = useState<IntegrationStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [menuMessage, setMenuMessage] = useState<Message | null>(null);
+  const [startMenuError, setStartMenuError] = useState<string | null>(null);
+
+  const refresh = useCallback(
+    () => api.integrationStatus().then(setIntegration, () => setIntegration(null)),
+    [],
+  );
 
   useEffect(() => {
-    if (open) api.shellIntegration().then(setShell, () => setShell(null));
-  }, [open]);
+    if (open) {
+      setMenuMessage(null);
+      setStartMenuError(null);
+      refresh();
+    }
+  }, [open, refresh]);
 
   const set = <K extends keyof Settings>(key: K, value: Settings[K]) =>
     onChange({ ...settings, [key]: value });
 
-  const toggleShell = async (enabled: boolean) => {
+  const setContextMenu = async (enabled: boolean) => {
+    setBusy(true);
+    setMenuMessage(null);
     try {
-      await api.setShellIntegration(enabled, t("shellMenuLabel"));
-      setShell(enabled);
-      setShellError(null);
+      await api.setContextMenu(enabled, t("shellMenuLabel"));
     } catch (e) {
-      setShellError(String(e));
+      setMenuMessage(
+        e === CANCELLED
+          ? { intent: "warning", text: t("contextMenuCancelled") }
+          : { intent: "error", text: String(e) },
+      );
+    } finally {
+      await refresh();
+      setBusy(false);
     }
+  };
+
+  const setStartMenu = async (enabled: boolean) => {
+    try {
+      await api.setStartMenu(enabled);
+      setStartMenuError(null);
+    } catch (e) {
+      setStartMenuError(String(e));
+    }
+    await refresh();
   };
 
   return (
@@ -105,17 +138,33 @@ export function SettingsDialog({ open, onOpenChange, settings, onChange }: Props
               onChange={(_, d) => set("closeAfterRename", d.checked)}
               label={t("closeAfterRename")}
             />
-            {shell !== null && (
+            {integration?.startMenu != null && (
               <Field
-                hint={t("shellIntegrationHint")}
-                validationState={shellError ? "error" : "none"}
-                validationMessage={shellError ?? undefined}
+                validationState={startMenuError ? "error" : "none"}
+                validationMessage={startMenuError ?? undefined}
               >
                 <Switch
-                  checked={shell}
-                  onChange={(_, d) => toggleShell(d.checked)}
-                  label={t("shellIntegration")}
+                  checked={integration.startMenu}
+                  onChange={(_, d) => setStartMenu(d.checked)}
+                  label={t("startMenu")}
                 />
+              </Field>
+            )}
+            {integration?.contextMenu != null && (
+              <Field
+                hint={integration.contextMenuNeedsAdmin ? t("contextMenuHint") : undefined}
+                validationState={menuMessage?.intent ?? "none"}
+                validationMessage={menuMessage?.text}
+              >
+                <div className="field-row">
+                  <Switch
+                    checked={integration.contextMenu}
+                    disabled={busy}
+                    onChange={(_, d) => setContextMenu(d.checked)}
+                    label={t("contextMenu")}
+                  />
+                  {busy && <Spinner size="tiny" />}
+                </div>
               </Field>
             )}
             <Text size={200} className="hint">

@@ -4,6 +4,7 @@ import {
   Field,
   Input,
   Label,
+  Link,
   Select,
   ToggleButton,
   Tooltip,
@@ -22,6 +23,8 @@ interface Props {
   options: RenameOptions;
   onChange: (patch: Partial<RenameOptions>) => void;
   regexError: string | null;
+  /** The search text matches none of the items. */
+  noMatches: boolean;
   /** `null` when suggestions are turned off. */
   recent: Recent | null;
 }
@@ -33,6 +36,44 @@ const TEXT_CASES: [TextCase, string, MessageKey][] = [
   ["capitalize", "Aa Aa", "caseCapitalize"],
 ];
 
+const REGEX_SYNTAX = /[.*+?^$()[\]{}|\\]/;
+const PATTERN_BODY = String.raw`\{(?:(?:start|increment|padding)=[^}]*|rstring(?:alnum|alpha|digit)=\d*|ruuidv4)?\}`;
+const MISSING_DOLLAR = new RegExp(String.raw`(?<!\$)(${PATTERN_BODY})`);
+const COUNTER = /\$\{(?:(?:start|increment|padding)=[^}]*)?\}/;
+const RANDOM = /\$\{(?:rstring(?:alnum|alpha|digit)=\d+|ruuidv4)\}/;
+
+interface Hint {
+  text: MessageKey;
+  action: MessageKey;
+  fix: Partial<RenameOptions>;
+}
+
+/** Common reasons why the replacement doesn't do what was intended. */
+function replaceHint(o: RenameOptions): Hint | null {
+  if (MISSING_DOLLAR.test(o.replace)) {
+    const fixed = o.replace.replace(new RegExp(MISSING_DOLLAR, "g"), "$$$1");
+    return { text: "hintAddDollar", action: "fixAddDollar", fix: { replace: fixed } };
+  }
+  if (!o.enumerate && COUNTER.test(o.replace)) {
+    return { text: "hintEnumerate", action: "fixTurnOn", fix: { enumerate: true } };
+  }
+  if (!o.random && RANDOM.test(o.replace)) {
+    return { text: "hintRandom", action: "fixTurnOn", fix: { random: true } };
+  }
+  return null;
+}
+
+function HintMessage({ text, action, onClick }: { text: string; action: string; onClick: () => void }) {
+  return (
+    <span>
+      {text}{" "}
+      <Link as="button" inline onClick={onClick}>
+        {action}
+      </Link>
+    </span>
+  );
+}
+
 function Section({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="section" role="group" aria-label={label}>
@@ -42,10 +83,12 @@ function Section({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function RenamePanel({ options, onChange, regexError, recent }: Props) {
+export function RenamePanel({ options, onChange, regexError, noMatches, recent }: Props) {
   const { t } = useI18n();
   const searchRef = useRef<HTMLInputElement>(null);
   const replaceRef = useRef<HTMLInputElement>(null);
+  const suggestRegex = !options.useRegex && noMatches && REGEX_SYNTAX.test(options.search);
+  const hint = replaceHint(options);
 
   const insertAtCursor =
     (field: "search" | "replace", ref: RefObject<HTMLInputElement | null>) =>
@@ -83,8 +126,18 @@ export function RenamePanel({ options, onChange, regexError, recent }: Props) {
     <div className="panel">
       <Field
         label={t("searchFor")}
-        validationState={regexError ? "error" : "none"}
-        validationMessage={regexError ? t("regexInvalid", { message: regexError }) : undefined}
+        validationState={regexError ? "error" : suggestRegex ? "warning" : "none"}
+        validationMessage={
+          regexError ? (
+            t("regexInvalid", { message: regexError })
+          ) : suggestRegex ? (
+            <HintMessage
+              text={t("hintUseRegex", { search: options.search })}
+              action={t("fixUseRegex")}
+              onClick={() => onChange({ useRegex: true })}
+            />
+          ) : undefined
+        }
       >
         <Input
           ref={searchRef}
@@ -97,7 +150,13 @@ export function RenamePanel({ options, onChange, regexError, recent }: Props) {
           contentAfter={<RegexPatterns options={options} onInsert={insertAtCursor("search", searchRef)} />}
         />
       </Field>
-      <Field label={t("replaceWith")}>
+      <Field
+        label={t("replaceWith")}
+        validationState={hint ? "warning" : "none"}
+        validationMessage={
+          hint ? <HintMessage text={t(hint.text)} action={t(hint.action)} onClick={() => onChange(hint.fix)} /> : undefined
+        }
+      >
         <Input
           ref={replaceRef}
           value={options.replace}

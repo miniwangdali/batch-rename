@@ -131,7 +131,10 @@ impl Session {
         depth: i.depth,
         is_dir: i.is_dir,
         parent: i.parent,
-        dir: i.parent.is_none().then(|| i.dir.to_string_lossy().into_owned()),
+        dir: i
+          .parent
+          .is_none()
+          .then(|| i.dir.to_string_lossy().into_owned()),
       })
       .collect()
   }
@@ -141,7 +144,11 @@ impl Session {
   }
 
   pub fn clear(&mut self) {
-    *self = Session { next_id: self.next_id, version: self.version, ..Session::default() };
+    *self = Session {
+      next_id: self.next_id,
+      version: self.version,
+      ..Session::default()
+    };
   }
 
   /// Adds files/folders (folders recursively). Paths already in the list are skipped; adding a
@@ -149,11 +156,18 @@ impl Session {
   pub fn add_paths(&mut self, paths: &[PathBuf]) -> AddReport {
     let mut report = AddReport::default();
     let mut roots: Vec<Vec<Item>> = self.take_roots();
-    let mut known: HashSet<String> = roots.iter().flatten().map(|i| path_key(&i.path())).collect();
+    let mut known: HashSet<String> = roots
+      .iter()
+      .flatten()
+      .map(|i| path_key(&i.path()))
+      .collect();
 
     for raw in paths {
-      let Ok(path) = std::path::absolute(raw) else { continue };
-      let (Some(name), Some(dir)) = (path.file_name().and_then(|n| n.to_str()), path.parent()) else {
+      let Ok(path) = std::path::absolute(raw) else {
+        continue;
+      };
+      let (Some(name), Some(dir)) = (path.file_name().and_then(|n| n.to_str()), path.parent())
+      else {
         report.missing.push(raw.to_string_lossy().into_owned());
         continue;
       };
@@ -164,7 +178,12 @@ impl Session {
       let key = path_key(&path);
       let inside_existing = roots.iter().any(|tree| {
         let root = &tree[0];
-        root.is_dir && key.starts_with(&format!("{}{}", path_key(&root.path()), std::path::MAIN_SEPARATOR))
+        root.is_dir
+          && key.starts_with(&format!(
+            "{}{}",
+            path_key(&root.path()),
+            std::path::MAIN_SEPARATOR
+          ))
       });
       if known.contains(&key) || inside_existing {
         continue;
@@ -178,7 +197,13 @@ impl Session {
         report.truncated = true;
         break;
       }
-      let root = Pending { path: path.clone(), name: name.to_string(), parent: None, depth: 0, meta };
+      let root = Pending {
+        path: path.clone(),
+        name: name.to_string(),
+        parent: None,
+        depth: 0,
+        meta,
+      };
       let (tree, truncated) = self.scan(root, dir, budget);
       report.truncated |= truncated;
       report.added += tree.len();
@@ -221,8 +246,15 @@ impl Session {
       let id = self.next_id;
       self.next_id += 1;
       let is_symlink = p.meta.file_type().is_symlink();
-      let is_dir = if is_symlink { fs::metadata(&p.path).is_ok_and(|m| m.is_dir()) } else { p.meta.is_dir() };
-      let dir = p.path.parent().map_or_else(|| root_dir.to_path_buf(), Path::to_path_buf);
+      let is_dir = if is_symlink {
+        fs::metadata(&p.path).is_ok_and(|m| m.is_dir())
+      } else {
+        p.meta.is_dir()
+      };
+      let dir = p
+        .path
+        .parent()
+        .map_or_else(|| root_dir.to_path_buf(), Path::to_path_buf);
       out.push(Item {
         id,
         name: p.name,
@@ -234,17 +266,30 @@ impl Session {
         modified: p.meta.modified().ok(),
       });
       if is_dir && !is_symlink {
-        let Ok(entries) = fs::read_dir(&p.path) else { continue };
+        let Ok(entries) = fs::read_dir(&p.path) else {
+          continue;
+        };
         let mut children: Vec<Pending> = entries
           .filter_map(Result::ok)
           .filter_map(|e| {
             let name = e.file_name().into_string().ok()?;
             let meta = e.metadata().ok()?;
-            Some(Pending { path: e.path(), name, parent: Some(id), depth: p.depth + 1, meta })
+            Some(Pending {
+              path: e.path(),
+              name,
+              parent: Some(id),
+              depth: p.depth + 1,
+              meta,
+            })
           })
           .collect();
         // Reverse order because the stack pops from the end.
-        children.sort_by(|a, b| a.meta.is_dir().cmp(&b.meta.is_dir()).then_with(|| natural_cmp(&b.name, &a.name)));
+        children.sort_by(|a, b| {
+          a.meta
+            .is_dir()
+            .cmp(&b.meta.is_dir())
+            .then_with(|| natural_cmp(&b.name, &a.name))
+        });
         stack.extend(children);
       }
     }
@@ -252,7 +297,12 @@ impl Session {
   }
 
   fn reindex(&mut self) {
-    self.index = self.items.iter().enumerate().map(|(i, item)| (item.id, i)).collect();
+    self.index = self
+      .items
+      .iter()
+      .enumerate()
+      .map(|(i, item)| (item.id, i))
+      .collect();
   }
 
   fn invalidate(&mut self) {
@@ -263,7 +313,10 @@ impl Session {
   /// Recomputes `dir` of nested items after folders were renamed. Items are stored parents-first.
   fn refresh_dirs(&mut self) {
     for i in 0..self.items.len() {
-      if let Some(parent) = self.items[i].parent.and_then(|p| self.index.get(&p).copied()) {
+      if let Some(parent) = self.items[i]
+        .parent
+        .and_then(|p| self.index.get(&p).copied())
+      {
         self.items[i].dir = self.items[parent].path();
       }
     }
@@ -273,14 +326,21 @@ impl Session {
     let names = self.dir_cache.entry(path_key(dir)).or_insert_with(|| {
       fs::read_dir(dir)
         .map(|entries| {
-          entries.filter_map(Result::ok).map(|e| name_key(&e.file_name().to_string_lossy())).collect()
+          entries
+            .filter_map(Result::ok)
+            .map(|e| name_key(&e.file_name().to_string_lossy()))
+            .collect()
         })
         .unwrap_or_default()
     });
     names.contains(&name_key(name))
   }
 
-  pub fn preview(&mut self, options: &Options, deselected: &HashSet<u32>) -> Result<Preview, String> {
+  pub fn preview(
+    &mut self,
+    options: &Options,
+    deselected: &HashSet<u32>,
+  ) -> Result<Preview, String> {
     let mut renamer = Renamer::new(options)?;
     let with_time = renamer.uses_time();
     let mut proposals: Vec<(usize, String)> = Vec::new();
@@ -297,7 +357,12 @@ impl Session {
         })
         .flatten()
         .map(DateTime::<Local>::from);
-      let info = ItemInfo { name: &item.name, is_dir: item.is_dir, depth: item.depth, time };
+      let info = ItemInfo {
+        name: &item.name,
+        is_dir: item.is_dir,
+        depth: item.depth,
+        time,
+      };
       match renamer.rename(&info) {
         Ok(Some(new_name)) => {
           if let Err(e) = validate_name(&new_name) {
@@ -316,7 +381,13 @@ impl Session {
     // Two proposals in the same folder must not end up with the same name.
     let target_keys: Vec<String> = proposals
       .iter()
-      .map(|(idx, new_name)| format!("{}\n{}", path_key(&self.items[*idx].dir), name_key(new_name)))
+      .map(|(idx, new_name)| {
+        format!(
+          "{}\n{}",
+          path_key(&self.items[*idx].dir),
+          name_key(new_name)
+        )
+      })
       .collect();
     let mut by_target: HashMap<&str, Vec<usize>> = HashMap::new();
     for (n, key) in target_keys.iter().enumerate() {
@@ -332,7 +403,16 @@ impl Session {
     let current: HashMap<String, usize> = proposals
       .iter()
       .enumerate()
-      .map(|(n, p)| (format!("{}\n{}", path_key(&self.items[p.0].dir), name_key(&self.items[p.0].name)), n))
+      .map(|(n, p)| {
+        (
+          format!(
+            "{}\n{}",
+            path_key(&self.items[p.0].dir),
+            name_key(&self.items[p.0].name)
+          ),
+          n,
+        )
+      })
       .collect();
     let mut dependents: HashMap<usize, Vec<usize>> = HashMap::new();
     for (n, p) in proposals.iter().enumerate() {
@@ -374,12 +454,22 @@ impl Session {
             (None, None)
           }
         };
-        PreviewEntry { id, new_name, error, detail }
+        PreviewEntry {
+          id,
+          new_name,
+          error,
+          detail,
+        }
       })
       .collect::<Vec<_>>();
     let renamable = plan.len();
     self.plan = Some((self.version, plan));
-    Ok(Preview { version: self.version, errors: entries.len() - renamable, entries, renamable })
+    Ok(Preview {
+      version: self.version,
+      errors: entries.len() - renamable,
+      entries,
+      renamable,
+    })
   }
 
   /// Renames according to the preview with the given version.
@@ -392,7 +482,12 @@ impl Session {
       .into_iter()
       .filter_map(|(id, to)| {
         let item = &self.items[*self.index.get(&id)?];
-        Some(Planned { id, dir: item.dir.clone(), from: item.name.clone(), to })
+        Some(Planned {
+          id,
+          dir: item.dir.clone(),
+          from: item.name.clone(),
+          to,
+        })
       })
       .collect();
     Ok(self.apply(planned, true))
@@ -404,14 +499,22 @@ impl Session {
       .into_iter()
       .filter_map(|h| {
         let item = &self.items[*self.index.get(&h.id)?];
-        (item.name == h.new).then(|| Planned { id: h.id, dir: item.dir.clone(), from: h.new, to: h.old })
+        (item.name == h.new).then(|| Planned {
+          id: h.id,
+          dir: item.dir.clone(),
+          from: h.new,
+          to: h.old,
+        })
       })
       .collect();
     Ok(self.apply(planned, false))
   }
 
   fn apply(&mut self, planned: Vec<Planned>, record: bool) -> RenameReport {
-    let names: HashMap<u32, (String, String)> = planned.iter().map(|p| (p.id, (p.from.clone(), p.to.clone()))).collect();
+    let names: HashMap<u32, (String, String)> = planned
+      .iter()
+      .map(|p| (p.id, (p.from.clone(), p.to.clone())))
+      .collect();
     let mut history = Vec::new();
     let mut failures = Vec::new();
     for outcome in fsops::execute(planned) {
@@ -421,9 +524,17 @@ impl Session {
           if let Some(&i) = self.index.get(&outcome.id) {
             self.items[i].name = to.clone();
           }
-          history.push(HistoryEntry { id: outcome.id, old: from.clone(), new: to.clone() });
+          history.push(HistoryEntry {
+            id: outcome.id,
+            old: from.clone(),
+            new: to.clone(),
+          });
         }
-        Err(message) => failures.push(Failure { id: outcome.id, name: from.clone(), message }),
+        Err(message) => failures.push(Failure {
+          id: outcome.id,
+          name: from.clone(),
+          message,
+        }),
       }
     }
     self.refresh_dirs();
@@ -432,7 +543,11 @@ impl Session {
     if record && !history.is_empty() {
       self.history.push(history);
     }
-    RenameReport { renamed, failures, can_undo: self.can_undo() }
+    RenameReport {
+      renamed,
+      failures,
+      can_undo: self.can_undo(),
+    }
   }
 }
 
@@ -455,24 +570,47 @@ mod tests {
   }
 
   fn opts(search: &str, replace: &str) -> Options {
-    Options { search: search.into(), replace: replace.into(), ..Options::default() }
+    Options {
+      search: search.into(),
+      replace: replace.into(),
+      ..Options::default()
+    }
   }
 
   fn preview_map(p: &Preview) -> HashMap<u32, (String, Option<String>)> {
-    p.entries.iter().map(|e| (e.id, (e.new_name.clone(), e.error.clone()))).collect()
+    p.entries
+      .iter()
+      .map(|e| (e.id, (e.new_name.clone(), e.error.clone())))
+      .collect()
   }
 
   #[test]
   fn scans_folders_recursively_in_natural_order() {
-    let t = setup(&["root/b10.txt", "root/b2.txt", "root/sub/c.txt", "root/a.txt"]);
+    let t = setup(&[
+      "root/b10.txt",
+      "root/b2.txt",
+      "root/sub/c.txt",
+      "root/a.txt",
+    ]);
     let mut s = Session::default();
     let report = s.add_paths(&[t.path().join("root")]);
     assert_eq!(report.added, 6);
-    let names: Vec<_> = s.items().iter().map(|i| (i.name.clone(), i.depth)).collect();
+    let names: Vec<_> = s
+      .items()
+      .iter()
+      .map(|i| (i.name.clone(), i.depth))
+      .collect();
     assert_eq!(
       names,
-      [("root", 0), ("sub", 1), ("c.txt", 2), ("a.txt", 1), ("b2.txt", 1), ("b10.txt", 1)]
-        .map(|(n, d)| (n.to_string(), d))
+      [
+        ("root", 0),
+        ("sub", 1),
+        ("c.txt", 2),
+        ("a.txt", 1),
+        ("b2.txt", 1),
+        ("b10.txt", 1)
+      ]
+      .map(|(n, d)| (n.to_string(), d))
     );
     // Adding a file that is already inside the folder is a no-op.
     assert_eq!(s.add_paths(&[t.path().join("root").join("a.txt")]).added, 0);
@@ -493,7 +631,10 @@ mod tests {
   fn preview_detects_conflicts() {
     let t = setup(&["a.txt", "b.txt", "keep.txt", "x1.txt", "x2.txt"]);
     let mut s = Session::default();
-    let files: Vec<_> = ["a.txt", "b.txt", "x1.txt", "x2.txt"].iter().map(|f| t.path().join(f)).collect();
+    let files: Vec<_> = ["a.txt", "b.txt", "x1.txt", "x2.txt"]
+      .iter()
+      .map(|f| t.path().join(f))
+      .collect();
     s.add_paths(&files);
     let id = |name: &str| s.items.iter().find(|i| i.name == name).unwrap().id;
     let (a, b, x1, x2) = (id("a.txt"), id("b.txt"), id("x1.txt"), id("x2.txt"));
@@ -554,6 +695,57 @@ mod tests {
     assert_eq!(names, ["file_1.txt", "file_2.txt", "file_3.txt"]);
     let r = s.rename(p.version).unwrap();
     assert_eq!(r.renamed, 3);
-    assert_eq!(fs::read_to_string(t.path().join("file_1.txt")).unwrap(), "a.txt");
+    assert_eq!(
+      fs::read_to_string(t.path().join("file_1.txt")).unwrap(),
+      "a.txt"
+    );
+  }
+
+  #[test]
+  fn whole_name_with_counter() {
+    let files = [
+      "鸣潮 2026_10_25 15_35_59.png",
+      "鸣潮 2026_10_25 15_49_26.png",
+      "鸣潮 2026_10_25 16_05_31.png",
+    ];
+    let t = setup(&files);
+    let mut s = Session::default();
+    s.add_paths(&files.map(|f| t.path().join(f)));
+    let preview = |s: &mut Session, search: &str, replace: &str, regex: bool| {
+      let mut o = opts(search, replace);
+      o.use_regex = regex;
+      let p = s.preview(&o, &HashSet::new()).unwrap();
+      p.entries
+        .iter()
+        .map(|e| (e.new_name.clone(), e.error.clone()))
+        .collect::<Vec<_>>()
+    };
+
+    // Without regular expressions ".*" is literal text, which no name contains.
+    assert!(preview(&mut s, ".*", "wuthering_wave_${start=38, padding=2}", false).is_empty());
+    // Without "$" the counter is literal text, so every name collides.
+    let literal = preview(&mut s, ".*", "wuthering_wave_{start=38, padding=2}", true);
+    assert!(
+      literal
+        .iter()
+        .all(|(_, e)| e.as_deref() == Some("duplicate")),
+      "{literal:?}"
+    );
+
+    let names: Vec<_> = preview(&mut s, ".*", "wuthering_wave_${start=38, padding=2}", true)
+      .into_iter()
+      .map(|(n, e)| {
+        assert_eq!(e, None);
+        n
+      })
+      .collect();
+    assert_eq!(
+      names,
+      [
+        "wuthering_wave_38.png",
+        "wuthering_wave_39.png",
+        "wuthering_wave_40.png"
+      ]
+    );
   }
 }

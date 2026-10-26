@@ -48,7 +48,11 @@ fn to_wide(path: &Path) -> Vec<u16> {
   let prefix: Vec<u16> = if raw.len() < 248 || text.starts_with(r"\\?\") {
     Vec::new()
   } else if let Some(unc) = text.strip_prefix(r"\\") {
-    return r"\\?\UNC\".encode_utf16().chain(unc.encode_utf16()).chain(Some(0)).collect();
+    return r"\\?\UNC\"
+      .encode_utf16()
+      .chain(unc.encode_utf16())
+      .chain(Some(0))
+      .collect();
   } else {
     r"\\?\".encode_utf16().collect()
   };
@@ -64,7 +68,10 @@ pub fn rename_no_replace(from: &Path, to: &Path) -> io::Result<()> {
       if source.dev() == target.dev() && source.ino() == target.ino() {
         std::fs::rename(from, to)
       } else {
-        Err(io::Error::new(io::ErrorKind::AlreadyExists, "an item with that name already exists"))
+        Err(io::Error::new(
+          io::ErrorKind::AlreadyExists,
+          "an item with that name already exists",
+        ))
       }
     }
     Err(e) if e.kind() == io::ErrorKind::NotFound => std::fs::rename(from, to),
@@ -104,7 +111,10 @@ pub fn execute(mut planned: Vec<Planned>) -> Vec<Outcome> {
 }
 
 fn execute_level(group: &[Planned], outcomes: &mut Vec<Outcome>) {
-  let current: HashSet<String> = group.iter().map(|p| path_key(&p.dir.join(&p.from))).collect();
+  let current: HashSet<String> = group
+    .iter()
+    .map(|p| path_key(&p.dir.join(&p.from)))
+    .collect();
   let mut direct = Vec::new();
   let mut via_temp = Vec::new();
   for p in group {
@@ -123,12 +133,16 @@ fn execute_level(group: &[Planned], outcomes: &mut Vec<Outcome>) {
     let tmp = temp_path(&p.dir);
     match rename_no_replace(&p.dir.join(&p.from), &tmp) {
       Ok(()) => parked.push((p, tmp)),
-      Err(e) => outcomes.push(Outcome { id: p.id, result: Err(describe(&e)) }),
+      Err(e) => outcomes.push(Outcome {
+        id: p.id,
+        result: Err(describe(&e)),
+      }),
     }
   }
   // Phase 2: everything that can go straight to its new name.
   for p in direct {
-    let result = rename_no_replace(&p.dir.join(&p.from), &p.dir.join(&p.to)).map_err(|e| describe(&e));
+    let result =
+      rename_no_replace(&p.dir.join(&p.from), &p.dir.join(&p.to)).map_err(|e| describe(&e));
     outcomes.push(Outcome { id: p.id, result });
   }
   // Phase 3: parked entries to their final names; put them back if that fails.
@@ -150,13 +164,21 @@ mod tests {
   use std::fs;
 
   fn names(dir: &Path) -> Vec<String> {
-    let mut v: Vec<String> = fs::read_dir(dir).unwrap().map(|e| e.unwrap().file_name().into_string().unwrap()).collect();
+    let mut v: Vec<String> = fs::read_dir(dir)
+      .unwrap()
+      .map(|e| e.unwrap().file_name().into_string().unwrap())
+      .collect();
     v.sort();
     v
   }
 
   fn plan(id: u32, dir: &Path, from: &str, to: &str) -> Planned {
-    Planned { id, dir: dir.to_path_buf(), from: from.into(), to: to.into() }
+    Planned {
+      id,
+      dir: dir.to_path_buf(),
+      from: from.into(),
+      to: to.into(),
+    }
   }
 
   #[test]
@@ -202,7 +224,10 @@ mod tests {
     let dir = t.path().join("old");
     fs::create_dir(&dir).unwrap();
     fs::write(dir.join("x.txt"), "x").unwrap();
-    let out = execute(vec![plan(0, t.path(), "old", "new"), plan(1, &dir, "x.txt", "y.txt")]);
+    let out = execute(vec![
+      plan(0, t.path(), "old", "new"),
+      plan(1, &dir, "x.txt", "y.txt"),
+    ]);
     assert!(out.iter().all(|o| o.result.is_ok()), "{out:?}");
     assert!(t.path().join("new").join("y.txt").exists());
   }

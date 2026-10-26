@@ -14,12 +14,14 @@ Rewritten from scratch as a small PowerToys PowerRename–style renamer.
 * Replace patterns: `${start=…,increment=…,padding=…}` counters, random strings and UUIDs, file date/time (`$YYYY`, `$MM`, `$DD`, …).
 * Live preview with per-item selection, "only renamed" filter, and conflict detection (invalid names, duplicates, existing files).
 * Safe renaming: never overwrites, handles swaps and chains, renames folder contents before folders, one-click undo.
-* Drag and drop, add files/folders, command-line paths, and an optional File Explorer context menu entry (Windows).
+* Drag and drop, add files/folders and command-line paths (very large selections are passed through a list file).
+* Portable single executable (no installer) with an optional Start menu shortcut.
+* File Explorer context menu entry: at the top of the Windows 11 menu through a locally signed sparse package (one administrator prompt), or in the regular menu on Windows 10.
 * English and Simplified Chinese UI, light/dark theme, recent search/replace suggestions.
 
 ### Under the hood
 
-* Tauri 1 beta → Tauri 2; Create React App + MUI + Recoil → Vite + React 19 + Fluent UI v9.
+* Tauri 1 beta → Tauri 2; Create React App + MUI + Recoil → Vite + React 19 + Fluent UI v9; yarn → npm.
 * Rename engine moved to Rust with unit tests.
 
 ## [0.2.0](https://github.com/miniwangdali/batch-rename/compare/v0.1.0...v0.2.0) (2022-01-01)

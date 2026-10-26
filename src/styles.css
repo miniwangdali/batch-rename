@@ -289,3 +289,9 @@ code {
 .settings .indented {
   margin-inline-start: 44px;
 }
+
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

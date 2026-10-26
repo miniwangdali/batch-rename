@@ -82,6 +82,9 @@ export function Workspace({ settings, onSettingsChange }: Props) {
 
   useEffect(() => {
     getCurrentWindow().setTitle(t("appTitle")).catch(() => {});
+    // Keeps Start menu / context menu entries pointing at this (portable) executable and in the
+    // current language. Never asks for permission.
+    api.syncIntegration(t("shellMenuLabel")).catch(() => {});
   }, [t]);
 
   useEffect(() => {
@@ -299,6 +302,7 @@ export function Workspace({ settings, onSettingsChange }: Props) {
           options={options}
           onChange={updateOptions}
           regexError={regexError}
+          noMatches={!!preview && options.search !== "" && preview.entries.length === 0}
           recent={settings.rememberRecent ? recent : null}
         />
       </aside>

@@ -97,7 +97,11 @@ impl Renamer {
     let regex = if opts.search.is_empty() {
       None
     } else {
-      let pattern = if opts.use_regex { opts.search.clone() } else { fancy_regex::escape(&opts.search).into_owned() };
+      let pattern = if opts.use_regex {
+        opts.search.clone()
+      } else {
+        fancy_regex::escape(&opts.search).into_owned()
+      };
       let re = RegexBuilder::new(&pattern)
         .case_insensitive(!opts.case_sensitive)
         .backtrack_limit(BACKTRACK_LIMIT)
@@ -110,10 +114,19 @@ impl Renamer {
       _ => Vec::new(),
     };
     let groups = match &regex {
-      Some(re) if opts.use_regex => Some((re.captures_len().saturating_sub(1), group_names.as_slice())),
+      Some(re) if opts.use_regex => {
+        Some((re.captures_len().saturating_sub(1), group_names.as_slice()))
+      }
       _ => None,
     };
-    let template = Template::parse(&opts.replace, &ParseOptions { groups, enumerate: opts.enumerate, random: opts.random });
+    let template = Template::parse(
+      &opts.replace,
+      &ParseOptions {
+        groups,
+        enumerate: opts.enumerate,
+        random: opts.random,
+      },
+    );
     Ok(Renamer {
       regex,
       template,
@@ -134,8 +147,11 @@ impl Renamer {
   }
 
   pub fn is_included(&self, item: &ItemInfo) -> bool {
-    (if item.is_dir { self.include_folders } else { self.include_files })
-      && (item.depth == 0 || self.include_subfolders)
+    (if item.is_dir {
+      self.include_folders
+    } else {
+      self.include_files
+    }) && (item.depth == 0 || self.include_subfolders)
   }
 
   /// Returns the new name, or `None` if the item isn't affected.
@@ -176,7 +192,12 @@ impl Renamer {
     Ok((new_name != item.name).then_some(new_name))
   }
 
-  fn replace(&self, re: &Regex, text: &str, time: Option<&DateTime<Local>>) -> Result<Option<String>, String> {
+  fn replace(
+    &self,
+    re: &Regex,
+    text: &str,
+    time: Option<&DateTime<Local>>,
+  ) -> Result<Option<String>, String> {
     let mut out = String::with_capacity(text.len());
     let mut last = 0;
     let mut matched = false;
@@ -188,7 +209,13 @@ impl Renamer {
       spans.clear();
       spans.extend((0..caps.len()).map(|i| caps.get(i).map(|m| (m.start(), m.end()))));
       out.push_str(&text[last..whole.start()]);
-      let ctx = RenderContext { text, spans: &spans, index: self.index, time, names: &self.names };
+      let ctx = RenderContext {
+        text,
+        spans: &spans,
+        index: self.index,
+        time,
+        names: &self.names,
+      };
       self.template.render(&ctx, &mut out);
       last = whole.end();
       if !self.match_all {
@@ -220,11 +247,20 @@ mod tests {
   use chrono::TimeZone;
 
   fn opts(search: &str, replace: &str) -> Options {
-    Options { search: search.into(), replace: replace.into(), ..Options::default() }
+    Options {
+      search: search.into(),
+      replace: replace.into(),
+      ..Options::default()
+    }
   }
 
   fn file(name: &str) -> ItemInfo<'_> {
-    ItemInfo { name, is_dir: false, depth: 0, time: None }
+    ItemInfo {
+      name,
+      is_dir: false,
+      depth: 0,
+      time: None,
+    }
   }
 
   fn run(o: &Options, names: &[&str]) -> Vec<Option<String>> {
@@ -240,9 +276,15 @@ mod tests {
   fn match_first_or_all() {
     let mut o = opts("power", "super");
     o.apply_to = ApplyTo::Both;
-    assert_eq!(one(&o, "powertoys-powerrename.txt").as_deref(), Some("supertoys-powerrename.txt"));
+    assert_eq!(
+      one(&o, "powertoys-powerrename.txt").as_deref(),
+      Some("supertoys-powerrename.txt")
+    );
     o.match_all = true;
-    assert_eq!(one(&o, "powertoys-powerrename.txt").as_deref(), Some("supertoys-superrename.txt"));
+    assert_eq!(
+      one(&o, "powertoys-powerrename.txt").as_deref(),
+      Some("supertoys-superrename.txt")
+    );
   }
 
   #[test]
@@ -258,7 +300,10 @@ mod tests {
     let o = opts("a.b", "x");
     assert_eq!(one(&o, "a.b.txt").as_deref(), Some("x.txt"));
     assert_eq!(one(&o, "axb.txt"), None);
-    assert_eq!(one(&opts("(1)", "$1"), "file (1).txt").as_deref(), Some("file $1.txt"));
+    assert_eq!(
+      one(&opts("(1)", "$1"), "file (1).txt").as_deref(),
+      Some("file $1.txt")
+    );
   }
 
   #[test]
@@ -286,7 +331,12 @@ mod tests {
   fn folders_have_no_extension() {
     let mut o = opts("v1.2", "v2.0");
     let mut r = Renamer::new(&o).unwrap();
-    let dir = ItemInfo { name: "lib v1.2", is_dir: true, depth: 0, time: None };
+    let dir = ItemInfo {
+      name: "lib v1.2",
+      is_dir: true,
+      depth: 0,
+      time: None,
+    };
     assert_eq!(r.rename(&dir).unwrap().as_deref(), Some("lib v2.0"));
     o.apply_to = ApplyTo::Extension;
     let mut r = Renamer::new(&o).unwrap();
@@ -303,7 +353,10 @@ mod tests {
   fn regex_groups() {
     let mut o = opts(r"(\d{2})-(\d{2})-(\d{4})", "$3-$2-$1");
     o.use_regex = true;
-    assert_eq!(one(&o, "report 29-03-2020.pdf").as_deref(), Some("report 2020-03-29.pdf"));
+    assert_eq!(
+      one(&o, "report 29-03-2020.pdf").as_deref(),
+      Some("report 2020-03-29.pdf")
+    );
 
     let mut o = opts("^", "foo_");
     o.use_regex = true;
@@ -328,7 +381,12 @@ mod tests {
     let out = run(&o, &["a.jpg", "x.jpg", "ab.jpg", "abc.jpg"]);
     assert_eq!(
       out,
-      vec![Some("Image_0010_.jpg".into()), None, Some("Image_0012_b.jpg".into()), Some("Image_0014_bc.jpg".into())]
+      vec![
+        Some("Image_0010_.jpg".into()),
+        None,
+        Some("Image_0012_b.jpg".into()),
+        Some("Image_0014_bc.jpg".into())
+      ]
     );
   }
 
@@ -350,11 +408,38 @@ mod tests {
     let mut o = opts("a", "b");
     o.include_folders = false;
     let mut r = Renamer::new(&o).unwrap();
-    assert_eq!(r.rename(&ItemInfo { name: "a", is_dir: true, depth: 0, time: None }).unwrap(), None);
-    assert!(r.rename(&ItemInfo { name: "a", is_dir: false, depth: 0, time: None }).unwrap().is_some());
+    assert_eq!(
+      r.rename(&ItemInfo {
+        name: "a",
+        is_dir: true,
+        depth: 0,
+        time: None
+      })
+      .unwrap(),
+      None
+    );
+    assert!(
+      r.rename(&ItemInfo {
+        name: "a",
+        is_dir: false,
+        depth: 0,
+        time: None
+      })
+      .unwrap()
+      .is_some()
+    );
     o.include_subfolders = false;
     let mut r = Renamer::new(&o).unwrap();
-    assert_eq!(r.rename(&ItemInfo { name: "a", is_dir: false, depth: 1, time: None }).unwrap(), None);
+    assert_eq!(
+      r.rename(&ItemInfo {
+        name: "a",
+        is_dir: false,
+        depth: 1,
+        time: None
+      })
+      .unwrap(),
+      None
+    );
   }
 
   #[test]
@@ -363,8 +448,16 @@ mod tests {
     let mut r = Renamer::new(&o).unwrap();
     assert!(r.uses_time());
     let time = Some(Local.with_ymd_and_hms(2020, 11, 2, 0, 0, 0).unwrap());
-    let item = ItemInfo { name: "powertoys.png", is_dir: false, depth: 0, time };
-    assert_eq!(r.rename(&item).unwrap().as_deref(), Some("Nov-02-20-powertoys.png"));
+    let item = ItemInfo {
+      name: "powertoys.png",
+      is_dir: false,
+      depth: 0,
+      time,
+    };
+    assert_eq!(
+      r.rename(&item).unwrap().as_deref(),
+      Some("Nov-02-20-powertoys.png")
+    );
   }
 
   #[test]

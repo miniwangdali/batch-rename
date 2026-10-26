@@ -28,7 +28,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "app", "dmg", "deb", "rpm", "appimage"],
+    "targets": ["app", "dmg", "deb", "rpm", "appimage"],
     "category": "Utility",
     "shortDescription": "Batch rename files and folders",
     "longDescription": "A tiny batch file renamer inspired by PowerToys PowerRename: search and replace with regular expressions, counters, dates and live preview.",
@@ -39,11 +39,6 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ],
-    "windows": {
-      "nsis": {
-        "installerHooks": "./windows/hooks.nsh"
-      }
-    }
+    ]
   }
 }

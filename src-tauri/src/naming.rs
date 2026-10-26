@@ -48,7 +48,10 @@ pub fn validate_name(name: &str) -> Result<(), NameError> {
     return Err(NameError::IllegalChars);
   }
   if cfg!(windows) {
-    if name.chars().any(|c| matches!(c, '<' | '>' | ':' | '"' | '\\' | '|' | '?' | '*') || (c as u32) < 32) {
+    if name
+      .chars()
+      .any(|c| matches!(c, '<' | '>' | ':' | '"' | '\\' | '|' | '?' | '*') || (c as u32) < 32)
+    {
       return Err(NameError::IllegalChars);
     }
     if name.ends_with(['.', ' ']) {
@@ -67,7 +70,12 @@ pub fn validate_name(name: &str) -> Result<(), NameError> {
 }
 
 fn is_reserved_windows_name(name: &str) -> bool {
-  let stem = name.split('.').next().unwrap_or(name).trim_end().to_ascii_uppercase();
+  let stem = name
+    .split('.')
+    .next()
+    .unwrap_or(name)
+    .trim_end()
+    .to_ascii_uppercase();
   match stem.as_str() {
     "CON" | "PRN" | "AUX" | "NUL" => true,
     s if s.len() == 4 && (s.starts_with("COM") || s.starts_with("LPT")) => {
@@ -90,7 +98,11 @@ pub fn natural_cmp(a: &str, b: &str) -> Ordering {
         let na = take_digits(&mut ai);
         let nb = take_digits(&mut bi);
         let (ta, tb) = (na.trim_start_matches('0'), nb.trim_start_matches('0'));
-        let ord = ta.len().cmp(&tb.len()).then_with(|| ta.cmp(tb)).then_with(|| na.len().cmp(&nb.len()));
+        let ord = ta
+          .len()
+          .cmp(&tb.len())
+          .then_with(|| ta.cmp(tb))
+          .then_with(|| na.len().cmp(&nb.len()));
         if ord != Ordering::Equal {
           return ord;
         }
@@ -122,9 +134,26 @@ mod tests {
 
   #[test]
   fn natural_order() {
-    let mut v = vec!["file10.txt", "file2.txt", "File1.txt", "file02.txt", "a", "B"];
+    let mut v = vec![
+      "file10.txt",
+      "file2.txt",
+      "File1.txt",
+      "file02.txt",
+      "a",
+      "B",
+    ];
     v.sort_by(|a, b| natural_cmp(a, b));
-    assert_eq!(v, ["a", "B", "File1.txt", "file2.txt", "file02.txt", "file10.txt"]);
+    assert_eq!(
+      v,
+      [
+        "a",
+        "B",
+        "File1.txt",
+        "file2.txt",
+        "file02.txt",
+        "file10.txt"
+      ]
+    );
   }
 
   #[test]

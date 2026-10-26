@@ -12,6 +12,9 @@ edition = "2024"
 name = "batch_rename_lib"
 crate-type = ["rlib"]
 
+[workspace]
+members = ["context-menu"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
@@ -38,6 +41,21 @@ tauri-plugin-single-instance = "2"
 [target."cfg(windows)".dependencies]
 windows-sys = { version = "0.61.2", features = ["Win32_Storage_FileSystem"] }
 winreg = "0.56.0"
+windows = { version = "0.62.2", features = [
+  "ApplicationModel",
+  "Foundation",
+  "Management_Deployment",
+  "Win32_Foundation",
+  "Win32_Security_Cryptography",
+  "Win32_Storage_FileSystem",
+  "Win32_System_Com",
+  "Win32_System_Registry",
+  "Win32_System_SystemInformation",
+  "Win32_System_Threading",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+] }
+windows-future = "0.3.2"
 
 [dev-dependencies]
 tempfile = "3.27.0"

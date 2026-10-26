@@ -15,7 +15,8 @@ pub enum TextCase {
 
 // Same small-word list PowerRename keeps lowercase in title case.
 const TITLE_EXCEPTIONS: &[&str] = &[
-  "a", "an", "to", "the", "at", "by", "for", "in", "of", "on", "up", "and", "as", "but", "or", "nor",
+  "a", "an", "to", "the", "at", "by", "for", "in", "of", "on", "up", "and", "as", "but", "or",
+  "nor",
 ];
 
 fn is_word_char(c: char) -> bool {
@@ -25,7 +26,10 @@ fn is_word_char(c: char) -> bool {
 fn capitalize(word: &str) -> String {
   let mut chars = word.chars();
   match chars.next() {
-    Some(first) => first.to_uppercase().chain(chars.as_str().to_lowercase().chars()).collect(),
+    Some(first) => first
+      .to_uppercase()
+      .chain(chars.as_str().to_lowercase().chars())
+      .collect(),
     None => String::new(),
   }
 }
@@ -41,11 +45,14 @@ pub fn apply(text: &str, case: TextCase) -> String {
       let mut rest = text;
       while !rest.is_empty() {
         let in_word = rest.chars().next().is_some_and(is_word_char);
-        let end = rest.find(|c: char| is_word_char(c) != in_word).unwrap_or(rest.len());
+        let end = rest
+          .find(|c: char| is_word_char(c) != in_word)
+          .unwrap_or(rest.len());
         let (run, tail) = rest.split_at(end);
         if in_word {
           let lower = run.to_lowercase();
-          if case == TextCase::Title && word_index > 0 && TITLE_EXCEPTIONS.contains(&lower.as_str()) {
+          if case == TextCase::Title && word_index > 0 && TITLE_EXCEPTIONS.contains(&lower.as_str())
+          {
             out.push_str(&lower);
           } else {
             out.push_str(&capitalize(run));
@@ -69,9 +76,18 @@ mod tests {
   fn transforms() {
     assert_eq!(apply("Hello World", TextCase::Lower), "hello world");
     assert_eq!(apply("Hello World", TextCase::Upper), "HELLO WORLD");
-    assert_eq!(apply("the lord OF the rings", TextCase::Title), "The Lord of the Rings");
-    assert_eq!(apply("the lord OF the rings", TextCase::Capitalize), "The Lord Of The Rings");
-    assert_eq!(apply("my_file-name (draft)", TextCase::Capitalize), "My_File-Name (Draft)");
+    assert_eq!(
+      apply("the lord OF the rings", TextCase::Title),
+      "The Lord of the Rings"
+    );
+    assert_eq!(
+      apply("the lord OF the rings", TextCase::Capitalize),
+      "The Lord Of The Rings"
+    );
+    assert_eq!(
+      apply("my_file-name (draft)", TextCase::Capitalize),
+      "My_File-Name (Draft)"
+    );
     assert_eq!(apply("don't stop", TextCase::Capitalize), "Don't Stop");
     assert_eq!(apply("照片 photo", TextCase::Capitalize), "照片 Photo");
     assert_eq!(apply("", TextCase::Title), "");

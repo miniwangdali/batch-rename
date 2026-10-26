@@ -83,6 +83,17 @@ export interface RenameResponse {
   report: { renamed: number; failures: Failure[]; canUndo: boolean };
 }
 
+export interface IntegrationStatus {
+  /** `null` where the platform doesn't support it. */
+  startMenu: boolean | null;
+  contextMenu: boolean | null;
+  /** Turning the context menu on asks for administrator permission (Windows 11). */
+  contextMenuNeedsAdmin: boolean;
+}
+
+/** Error from `setContextMenu` when the user declined the administrator prompt. */
+export const CANCELLED = "cancelled";
+
 export const api = {
   addPaths: (paths: string[]) => invoke<ItemsResponse>("add_paths", { paths }),
   addPending: () => invoke<ItemsResponse>("add_pending"),
@@ -91,7 +102,9 @@ export const api = {
     invoke<Preview>("preview", { options, deselected }),
   rename: (version: number) => invoke<RenameResponse>("rename", { version }),
   undo: () => invoke<RenameResponse>("undo"),
-  shellIntegration: () => invoke<boolean | null>("shell_integration"),
-  setShellIntegration: (enabled: boolean, label: string) =>
-    invoke<void>("set_shell_integration", { enabled, label }),
+  integrationStatus: () => invoke<IntegrationStatus>("integration_status"),
+  setStartMenu: (enabled: boolean) => invoke<void>("set_start_menu", { enabled }),
+  setContextMenu: (enabled: boolean, label: string) =>
+    invoke<void>("set_context_menu", { enabled, label }),
+  syncIntegration: (label: string) => invoke<void>("sync_integration", { label }),
 };

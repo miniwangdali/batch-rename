@@ -16,11 +16,33 @@ cross-platform. Built with [Tauri 2](https://v2.tauri.app/), React and
   Problems (invalid names, duplicates, existing files) are flagged before anything is renamed.
 - **Safe renaming**: existing files are never overwritten, swaps such as `a → b, b → a` work,
   folder contents are renamed before their folders, and **Undo** restores the previous names.
-- **Ways to add items**: drag and drop, *Add files* / *Add folder*, command-line arguments, and on
-  Windows an optional *Rename with Batch Rename* entry in the File Explorer context menu (Settings).
+- **Ways to add items**: drag and drop, *Add files* / *Add folder*, command-line arguments, and
+  *Rename with Batch Rename* in the File Explorer context menu (Windows, see below).
+- **Portable**: a single executable, no installer. Optionally add it to the Start menu.
 - English and Simplified Chinese, light and dark theme, recently used search/replace suggestions.
 
 Keyboard: <kbd>Ctrl</kbd>+<kbd>Enter</kbd> renames.
+
+## Windows integration
+
+Everything is off by default and can be turned on in **Settings**:
+
+- **Show in the Start menu** adds a shortcut to your Start menu (for your account only).
+- **Show "Rename with Batch Rename" in the File Explorer context menu** puts the entry at the top
+  of the Windows 11 menu (on Windows 10, in the regular menu). Windows 11 only allows that for
+  signed app packages, so the app creates a small package for its menu handler, signs it with a
+  certificate made on your PC, and asks **once** for administrator permission to trust that
+  certificate. The certificate's private key is deleted right after signing, so it can't be used
+  to sign anything else. Windows 10 needs no administrator permission.
+
+When you move the app, the Start menu shortcut and the menu entry follow it the next time you
+start it. To remove the app, turn both settings off, then delete the executable. Its settings are
+in `%LOCALAPPDATA%\io.github.miniwangdali.batch-rename`. On Windows 11 the (now useless)
+certificate stays in the computer's *Trusted People* store; you can remove
+*Batch Rename Context Menu* there with `certlm.msc` if you like.
+
+The app needs the Microsoft Edge WebView2 Runtime, which is part of Windows 11 and up-to-date
+Windows 10.
 
 ## Replace patterns
 
@@ -57,13 +79,15 @@ including lookaround and backreferences).
 ## Development
 
 Prerequisites: [Node.js](https://nodejs.org/) 20+, [Rust](https://rustup.rs/) (stable) and the
-[Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS.
+[Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS. On Windows the build
+also uses `makeappx.exe` from the Windows SDK (installed with the Visual Studio C++ build tools; set
+`MAKEAPPX` to use another copy).
 
 ```sh
 npm install
 npm run tauri dev     # run the app with hot reload
-npm test              # Rust unit tests (rename engine, file operations)
-npm run tauri build   # release build; installers are in src-tauri/target/release/bundle
+npm test              # Rust unit tests
+npm run tauri build   # release build: src-tauri/target/release/batch-rename.exe
 ```
 
 Project layout:
@@ -72,7 +96,10 @@ Project layout:
 - `src-tauri/src/engine/` – the rename engine: replace patterns, text formatting, regex.
 - `src-tauri/src/session.rs` – item list, preview with conflict detection, rename and undo.
 - `src-tauri/src/fsops.rs` – non-overwriting renames and the batch executor.
-- `src-tauri/src/shell.rs` – Windows File Explorer context menu registration.
+- `src-tauri/src/integration/` – Start menu shortcut and File Explorer context menu (classic and
+  top-level: package signing, certificate trust, registration).
+- `src-tauri/context-menu/` – the Windows 11 context menu handler (a small COM DLL) and its package
+  manifest. `src-tauri/build.rs` builds both and embeds them in the executable.
 
 ## License
 
