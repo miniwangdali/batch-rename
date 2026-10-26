@@ -1,59 +1,47 @@
-import { EventCallback, UnlistenFn } from "@tauri-apps/api/event";
-import { getCurrent } from "@tauri-apps/api/window";
-import React, { useEffect } from "react";
-import { useMount, useUnmount } from "react-use";
-import { FilePage } from "./pages/FilePage/FilePage";
-import { OptionsPage } from "./pages/OptionsPage/OptionsPage";
-import { getMatches } from "@tauri-apps/api/cli";
-import { SettingsPage } from "./pages/SettingsPage/SettingsPage";
-import { useAddFiles } from "./atoms/files";
-import { AppMessages as messages } from "./messages";
-import "./App.scss";
-import { useIntl } from "react-intl";
-import { useRecoilValue } from "recoil";
-import { languageState } from "./atoms/language";
+import { useEffect, useState } from "react";
+import { FluentProvider, webDarkTheme, webLightTheme } from "@fluentui/react-components";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { I18nProvider, resolveLocale } from "./i18n";
+import { loadSettings, saveSettings } from "./settings";
+import { Workspace } from "./Workspace";
 
-let unlistenList: UnlistenFn[] = [];
+const DARK_QUERY = "(prefers-color-scheme: dark)";
 
-const App = () => {
-  const intl = useIntl();
-  const lang = useRecoilValue(languageState);
-  const addFiles = useAddFiles();
+function useSystemDark() {
+  const [dark, setDark] = useState(() => matchMedia(DARK_QUERY).matches);
+  useEffect(() => {
+    const query = matchMedia(DARK_QUERY);
+    const onChange = (e: MediaQueryListEvent) => setDark(e.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+  return dark;
+}
 
-  const onFileDrop: EventCallback<string[]> = (evt) => {
-    const { payload } = evt;
-    addFiles(payload);
-  };
+export default function App() {
+  const [settings, setSettings] = useState(loadSettings);
+  const systemDark = useSystemDark();
+  const dark = settings.theme === "dark" || (settings.theme === "system" && systemDark);
+  const locale = resolveLocale(settings.language);
 
-  useMount(() => {
-    console.log("try to get args");
-    getMatches()
-      .then((m) => console.log("args: ", m))
-      .catch(console.warn);
-    const currentWindow = getCurrent();
-    currentWindow
-      .listen("tauri://file-drop", onFileDrop)
-      .then((unlistenFunc) => {
-        unlistenList.push(unlistenFunc);
-      });
-  });
-
-  useUnmount(() => {
-    unlistenList.forEach((unlisten) => unlisten());
-  });
+  useEffect(() => saveSettings(settings), [settings]);
 
   useEffect(() => {
-    const currentWindow = getCurrent();
-    currentWindow.setTitle(intl.formatMessage(messages.title));
-  }, [intl, lang]);
+    // Keeps the native title bar in sync with the chosen theme.
+    getCurrentWindow()
+      .setTheme(settings.theme === "system" ? null : settings.theme)
+      .catch(() => {});
+  }, [settings.theme]);
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   return (
-    <div className="App">
-      <OptionsPage />
-      <SettingsPage />
-      <FilePage />
-    </div>
+    <FluentProvider theme={dark ? webDarkTheme : webLightTheme} className="provider">
+      <I18nProvider locale={locale}>
+        <Workspace settings={settings} onSettingsChange={setSettings} />
+      </I18nProvider>
+    </FluentProvider>
   );
-};
-
-export default App;
+}
